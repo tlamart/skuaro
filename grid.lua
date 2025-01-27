@@ -1,70 +1,24 @@
-local Object = require "classic"
-
-local corner = Object:extend()
-local cell = Object:extend()
+local corner = require "corner"
+local cell = require "cell"
 local grid = Object:extend()
-
-function corner:new(x, y)
-    self.x = x
-    self.y = y
-    self.size = 10
-    self.fill = false
-    self.locked = false
-end
-
-function corner:draw()
-    local mode = self.fill and "fill" or "line"
-    love.graphics.circle(mode, self.x, self.y, self.size)
-    if self.fill == false then
-        love.graphics.setColor(0, 0, 0)
-        love.graphics.circle("fill", self.x, self.y, self.size - 1)
-        love.graphics.setColor(1, 1, 1)
-    end
-end
-
-function cell:new(size)
-    self.size = size
-    self.value = 0
-end
-
-function cell:draw(x, y)
-    love.graphics.rectangle("line", x, y, self.size, self.size)
-    love.graphics.print(self.value, x + self.size / 2 - 10, y + self.size / 2 - 20, 0, 3, 3)
-end
-
-local function isfill(c)
-    if c.fill == true and c.locked == true then
-        return 1
-    else
-        return 0
-    end
-end
-
-local function islocked(c)
-    if c.fill == false and c.locked == true then
-        return 1
-    else
-        return 0
-    end
-end
 
 local function min_value(index, size, corners)
     index = index + math.floor((index - 1) / size)
     local min = 0
-    min = min + isfill(corners[index])
-    min = min + isfill(corners[index + 1])
-    min = min + isfill(corners[index + 1 + size])
-    min = min + isfill(corners[index + 2 + size])
+    min = min + (corners[index]:isfilled() and 1 or 0)
+    min = min + (corners[index + 1]:isfilled() and 1 or 0)
+    min = min + (corners[index + 1 + size]:isfilled() and 1 or 0)
+    min = min + (corners[index + 2 + size]:isfilled() and 1 or 0)
     return min
 end
 
 local function max_value(index, size, corners)
     index = index + math.floor((index - 1) / size)
     local max = 4
-    max = max - islocked(corners[index])
-    max = max - islocked(corners[index + 1])
-    max = max - islocked(corners[index + 1 + size])
-    max = max - islocked(corners[index + 2 + size])
+    max = max - (corners[index]:isempty() and 1 or 0)
+    max = max - (corners[index + 1]:isempty() and 1 or 0)
+    max = max - (corners[index + 1 + size]:isempty() and 1 or 0)
+    max = max - (corners[index + 2 + size]:isempty() and 1 or 0)
     return max
 end
 
@@ -125,44 +79,48 @@ local function unlock_unfill_all(corners)
     end
 end
 
--- local function print_grid(grid, size)
---     print(
---         grid[1].value .. grid[2].value .. grid[3].value .. grid[4].value .. "\n" ..
---         grid[5].value .. grid[6].value .. grid[7].value .. grid[8].value .. "\n" ..
---         grid[9].value .. grid[10].value .. grid[11].value ..  grid[12].value .."\n" ..
---         grid[13].value .. grid[14].value .. grid[15].value ..  grid[16].value .."\n"
---     )
--- end
-
 local function init_cell_value(array, size, corners)
     math.randomseed(os.time())
     local index = math.random(1, #array)
-    -- if arg[2] == "debug" then index = 7 end
     array[index].value = math.random(0, 1) * 4
-    -- if arg[2] == "debug" then array[index].value = 0 end
     set_corners(array, index, corners, size)
-    -- if arg[2] == "debug" then print_grid(array, size) end
     for i = index + 1, #array do
         array[i].value = math.random(min_value(i, size, corners), max_value(i, size, corners))
         set_corners(array, i, corners, size)
-        -- if arg[2] == "debug" then print_grid(array, size) end
     end
     for i = index - 1, 1, -1 do
         array[i].value = math.random(min_value(i, size, corners), max_value(i, size, corners))
         set_corners(array, i, corners, size)
-        -- if arg[2] == "debug" then print_grid(array, size) end
     end
     unlock_unfill_all(corners)
 end
 
+local function check_answer(arg)
+    local arr = arg[1]
+    local crnr = arg[2]
+    local s = arg[3]
+    for i, val in ipairs(arr) do
+        if count_corners(i, crnr, s) ~= val.value then
+            Alert:message("Incorrect...", 3)
+            return
+        end
+    end
+    Alert:message("Congratulations !", 3)
+end
+
+
 function grid:new(size)
-    -- self.width, self.height = love.window.getDesktopDimensions()
-    self.width, self.height = 800, 600
+    self.width, self.height = love.graphics.getDimensions()
+    -- self.width, self.height = 800, 600
     self.cell_size = self.width < self.height and self.width or self.height
     self.cell_size = self.cell_size / (size + 1)
     self.size = size
     self.grid = {}
     self.corners = {}
+    self.ui = {
+        Button(self.width / 2, self.height - 50, 100, 40, "check", check_answer, self.grid, self.corners, self.size)
+    }
+    self.ui[1]:center()
     local y = (self.height - (self.cell_size * self.size)) / 2
     local xstart = (self.width - (self.cell_size * self.size)) / 2
     local x = xstart
@@ -194,19 +152,6 @@ function grid:draw_cell()
     end
 end
 
--- function grid:draw_corner()
---     local y = (self.height - (self.cell_size * self.size)) / 2
---     local xstart = (self.width - (self.cell_size * self.size)) / 2
---     for i = 0, self.size do
---         local x = xstart
---         for j = 1, self.size + 1 do
---             self.corners[i * (self.size + 1) + j]:draw(x, y, 20)
---             x = x + self.cell_size
---         end
---         y = y + self.cell_size
---     end
--- end
-
 function grid:draw_corner()
     for _, c in ipairs(self.corners) do
         c:draw()
@@ -216,6 +161,9 @@ end
 function grid:draw()
     self:draw_cell()
     self:draw_corner()
+    for _, b in ipairs(self.ui) do
+        b:draw()
+    end
 end
 
 return grid
