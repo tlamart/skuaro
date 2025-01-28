@@ -21,7 +21,7 @@ function love.mousepressed(x, y, button)
         if math.abs(x - (b.x + b.width / 2)) <= b.width / 2
         and math.abs(y - (b.y + b.height / 2)) <= b.height / 2
         then
-            b.callback(b.arg)
+            b.callback(b, b.arg)
         end
     end
 end

@@ -95,7 +95,11 @@ local function init_cell_value(array, size, corners)
     unlock_unfill_all(corners)
 end
 
-local function check_answer(arg)
+local function reset_grid()
+    Grid:reset()
+end
+
+local function check_answer(b, arg)
     local arr = arg[1]
     local crnr = arg[2]
     local s = arg[3]
@@ -106,12 +110,13 @@ local function check_answer(arg)
         end
     end
     Alert:message("Congratulations !", 3)
+    b.text = "New one"
+    b.callback = reset_grid
 end
 
 
 function grid:new(size)
     self.width, self.height = love.graphics.getDimensions()
-    -- self.width, self.height = 800, 600
     self.cell_size = self.width < self.height and self.width or self.height
     self.cell_size = self.cell_size / (size + 1)
     self.size = size
@@ -137,6 +142,14 @@ function grid:new(size)
         end
     end
     init_cell_value(self.grid, size, self.corners)
+end
+
+function grid:reset()
+    unlock_unfill_all(self.corners)
+    init_cell_value(self.grid, self.size, self.corners)
+    self.ui[1].text = "check"
+    self.ui[1].callback = check_answer
+    Alert.time = 0
 end
 
 function grid:draw_cell()
